@@ -12,6 +12,7 @@ Created on Sun Apr 19 18:08:42 2026
 
 @author: raluca
 """
+import gc
 import glob
 import matplotlib
 import os
@@ -236,6 +237,38 @@ adata_all.obs['refined_cell_type'] = adata_all.obs['leiden_clusters'].map(cluste
 sc.pl.umap(adata_all,color='refined_cell_type', legend_loc = 'on data',
            legend_fontsize=5, legend_fontoutline=2,frameon=False)
 
-adata_all.write("CRC_integrated_refined.h5ad")
+
+# 1. Create the slim object
+needed_obs = ['refined_cell_type', 'pool_lib']
+adata_slim = adata_all[:, :].copy()
+
+# 2. Keep only essential metadata
+adata_slim.obs = adata_all.obs[needed_obs].copy()
+
+# 3. FORCE counts and X to be sparse (This is the "magic" for size reduction)
+if 'counts' in adata_slim.layers:
+    adata_slim.layers['counts'] = csr_matrix(adata_slim.layers['counts'])
+    
+# Replace .X with the sparse counts to save even more space 
+# (Since cell2location needs counts anyway)
+adata_slim.X = csr_matrix(adata_slim.layers['counts'])
+
+# 4. Wipe everything else
+adata_slim.obsm = {}
+adata_slim.obsp = {}
+adata_slim.uns = {}
+adata_slim.varm = {}
+
+# 5. Save with compression (Essential for Jupyter uploads)
+adata_slim.write("CRC_integrated_refined.h5ad", compression='gzip')
+
+# Free up memory in your current session
+gc.collect()
+
+print("Saved slimmed adata with 'counts' layer and 'refined_cell_type'.")
+
+
+
+#adata_all.write("CRC_integrated_refined.h5ad")
 # Marker genes for your T-cell types
 
