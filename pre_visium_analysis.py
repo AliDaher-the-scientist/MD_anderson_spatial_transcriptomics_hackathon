@@ -22,10 +22,12 @@ import json
 from scipy.spatial import distance_matrix
 import pickle
 
+df = pd.read_parquet('tissue_positions.parquet')
+rows = df['in_tissue']
+rows_filtered = np.where(rows==1)[0]
+adata = sc.read_10x_h5('filtered_feature_bc_matrix.h5')
 
-adata = sc.read_10x_h5('GSM8594563_P5NAT_filtered_feature_bc_matrix.h5')
-
-spatial_data = pd.read_csv('GSM8594563_P5NAT_tissue_positions.csv')
+spatial_data = df.iloc[rows_filtered]
 
 # Assign column names
 spatial_data.columns = ['barcode', 'in_tissue', 'row', 'column', 'x', 'y']
@@ -80,36 +82,36 @@ plt.title('Filtered Spatial Coordinates')
 plt.show()
 
 
-# Load the JSON file
-with open('GSM8594563_P5NAT_scalefactors_json.json', 'r') as f:
-    json_data = json.load(f)
+# # Load the JSON file
+# with open('GSM8594563_P5NAT_scalefactors_json.json', 'r') as f:
+#     json_data = json.load(f)
 
-# Access the 'resolutions' key (if it exists)
-spot_diameter_res = json_data['spot_diameter_fullres']
-
-
-nucleotide_ID = adata.obs.index
-spatial_data_pixel = spatial_data_matched.iloc[:,[3,4]].to_numpy()
-dis_matrix_pixel = distance_matrix(spatial_data_pixel,spatial_data_pixel)
-dis_matrix_um = dis_matrix_pixel*55/spot_diameter_res
+# # Access the 'resolutions' key (if it exists)
+# spot_diameter_res = json_data['spot_diameter_fullres']
 
 
-neighbour_list = [];
-for i in range(dis_matrix_um.shape[0]):
-    local_list = []
-    for j in range(dis_matrix_um.shape[0]):       
-        if dis_matrix_um[i,j]>0 and dis_matrix_um[i,j] <100:
-            local_list.append(j)
-    neighbour_list.append(np.array(local_list))
+# nucleotide_ID = adata.obs.index
+# spatial_data_pixel = spatial_data_matched.iloc[:,[3,4]].to_numpy()
+# dis_matrix_pixel = distance_matrix(spatial_data_pixel,spatial_data_pixel)
+# dis_matrix_um = dis_matrix_pixel*55/spot_diameter_res
+
+
+# neighbour_list = [];
+# for i in range(dis_matrix_um.shape[0]):
+#     local_list = []
+#     for j in range(dis_matrix_um.shape[0]):       
+#         if dis_matrix_um[i,j]>0 and dis_matrix_um[i,j] <100:
+#             local_list.append(j)
+#     neighbour_list.append(np.array(local_list))
     
-neighbours_info = pd.DataFrame({
-    'ID': nucleotide_ID,
-    'Arrays': neighbour_list
-})   
+# neighbours_info = pd.DataFrame({
+#     'ID': nucleotide_ID,
+#     'Arrays': neighbour_list
+# })   
         
-adata.write("GSM8594563_processed.h5ad")
+adata.write("patient_5_CRC_processed.h5ad")
 
 
 # Save the DataFrame to a file using pickle
-with open('dataframe.pkl', 'wb') as file:
-    pickle.dump(neighbours_info, file)
+# with open('dataframe.pkl', 'wb') as file:
+#     pickle.dump(neighbours_info, file)
